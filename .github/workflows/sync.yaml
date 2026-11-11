@@ -32,7 +32,7 @@ jobs:
         run: |
           if [ -f Casks/fluxdo.rb ]; then
             ruby -c Casks/fluxdo.rb
-            brew ruby -r cask/cask_loader -e 'cask = Cask::CaskLoader.from_content(File.read("Casks/fluxdo.rb")); abort "Unexpected Cask" unless cask.token == "fluxdo"; puts "Validated FluxDO #{cask.version}"'
+            brew ruby -r cask/cask_loader -e 'cask = Cask::CaskLoader::FromContentLoader.new(File.read("Casks/fluxdo.rb")).load(config: nil); abort "Unexpected Cask" unless cask.token == "fluxdo"; puts "Validated FluxDO #{cask.version}"'
           fi
       - name: Commit Cask update
         run: |
