@@ -1,0 +1,47 @@
+name: Sync FluxDO release
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - scripts/**
+      - .github/workflows/sync.yaml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-fluxdo
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync latest published manifests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/sync_release.py
+      - name: Validate Cask
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+        run: |
+          if [ -f Casks/fluxdo.rb ]; then
+            ruby -c Casks/fluxdo.rb
+            brew ruby -r cask/cask_loader -e 'cask = Cask::CaskLoader.from_content(File.read("Casks/fluxdo.rb")).load; abort "Unexpected Cask" unless cask.token == "fluxdo"; puts "Validated FluxDO #{cask.version}"'
+          fi
+      - name: Commit Cask update
+        run: |
+          if [ -f Casks/fluxdo.rb ]; then
+            git add Casks/fluxdo.rb
+            if ! git diff --cached --quiet; then
+              git config user.name 'github-actions[bot]'
+              git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+              git commit -m 'Update FluxDO Cask from stable release'
+              git push
+            fi
+          fi
